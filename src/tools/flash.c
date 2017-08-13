@@ -23,9 +23,19 @@ static void cleanup(int signum) {
         stlink_exit_debug_mode(connected_stlink);
         stlink_close(connected_stlink);
     }
-
+#if !defined(_MSC_VER)
     exit(1);
+#endif
 }
+
+#if defined(_MSC_VER)
+// SIGINT isn't supported under Win32 - use SetConsoleCtrlHandler() instead
+BOOL WINAPI consoleHandler(DWORD signal) {
+    cleanup(SIGINT); // do cleanup
+    ExitProcess(SIGINT);
+    return TRUE;
+}
+#endif
 
 static void usage(void)
 {
@@ -73,7 +83,11 @@ int main(int ac, char** av)
     sl->verbose = o.log_level;
 
     connected_stlink = sl;
+#if defined(_MSC_VER)
+    SetConsoleCtrlHandler(consoleHandler, TRUE);
+#else
     signal(SIGINT, &cleanup);
+#endif
     signal(SIGTERM, &cleanup);
     signal(SIGSEGV, &cleanup);
 

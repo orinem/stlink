@@ -71,9 +71,20 @@ static void cleanup(int signum) {
         stlink_exit_debug_mode(connected_stlink);
         stlink_close(connected_stlink);
     }
-
+#if !defined(_MSC_VER)
     exit(1);
+#endif
 }
+
+
+#if defined(_MSC_VER)
+// SIGINT isn't supported under Win32 - use SetConsoleCtrlHandler() instead
+BOOL WINAPI consoleHandler(DWORD signal) {
+    cleanup(SIGINT); // do cleanup
+    ExitProcess(SIGINT);
+    return TRUE;
+}
+#endif
 
 
 static stlink_t* do_connect(st_state_t *st) {
@@ -228,7 +239,11 @@ int main(int argc, char** argv) {
     if(sl == NULL) return 1;
 
     connected_stlink = sl;
+#if defined(_MSC_VER)
+    SetConsoleCtrlHandler(consoleHandler, TRUE);
+#else
     signal(SIGINT, &cleanup);
+#endif
     signal(SIGTERM, &cleanup);
     signal(SIGSEGV, &cleanup);
 
